@@ -1,0 +1,77 @@
+<?php
+
+/**
+ * @file
+ * Event_calendar.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_form_alter().
+ */
+function event_calendar_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (in_array($form_id, ['node_article_form', 'node_article_edit_form'])) {
+    $form['event_settings'] = [
+      '#type' => 'details',
+      '#title' => 'イベント開始日',
+      '#group' => 'advanced',
+      '#open' => FALSE,
+      '#weight' => 35,
+      '#attributes' => ['class' => ['event-form']],
+      '#optional' => FALSE,
+    ];
+    $form['event_settings']['event_start_date'] = [
+      '#type' => 'datetime',
+      '#title' => 'イベント開始日',
+      '#required' => TRUE,
+      '#description' => 'イベントの開始日を選択してください。',
+    ];
+    $form['event_settings']['event_end_date'] = [
+      '#type' => 'datetime',
+      '#title' => 'イベント終了日',
+      '#required' => TRUE,
+      '#description' => 'イベントの終了日を選択してください。',
+    ];
+    $form['#validate'][] = 'event_calendar_node_form_validate';
+    $form['actions']['submit']['#submit'][] = 'event_calendar_node_form_submit';
+  }
+}
+
+/**
+ * Submit function validate.
+ */
+function event_calendar_node_form_validate($form, FormStateInterface $form_state) {
+  // 開始日時と終了日時を取得.
+  $start_date = $form_state->getValue('event_start_date');
+  $end_date = $form_state->getValue('event_end_date');
+
+  if (!isset($start_date) || !isset($end_date)) {
+    $form_state->setErrorByName('event_start_date', '開始日と終了日は必須です。');
+  }
+
+  if (strtotime($end_date) <= strtotime($start_date)) {
+    $form_state->setErrorByName('event_end_date', '終了日時は開始日時より後である必要があります。');
+  }
+}
+
+/**
+ * Submit function calendar.
+ */
+function event_calendar_node_form_submit($form, FormStateInterface $form_state) {
+  dump('hoge');
+  exit;
+  // $nid = $form_state->getFormObject()->getEntity()->id();
+  // $start_date = $form_state->getValue(['event_settings', 'event_start_date']);
+  // $end_date = $form_state->getValue(['event_settings', 'event_end_date']);.
+  // // データベースに保存.
+  // $fields = [
+  //   'nid' => $nid,
+  //   'start_date' => date('Y-m-d H:i:s', strtotime($start_date)),
+  //   'end_date' => date('Y-m-d H:i:s', strtotime($end_date)),
+  // ];
+  // $query = \Drupal::database()->merge('event_calendars')
+  //   ->key(['nid' => $nid])
+  //   ->fields($fields);
+  // $query->execute();
+}
