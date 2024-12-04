@@ -1,0 +1,5 @@
+name: "event_calendar"
+type: module
+description: "イベントカレンダー追加"
+package: Custom
+core_version_requirement: ^10
