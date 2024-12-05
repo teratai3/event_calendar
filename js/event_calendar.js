@@ -22,7 +22,7 @@
                                 ];
                                 
 
-                                html += `<td class="${classes.join(' ')}">${day.day || ''}</td>`;
+                                html += `<td class="${classes.join(' ').trim()}">${day.day || ''}</td>`;
                                 count++;
                             });
                             html += '</tr></tbody></table>';
