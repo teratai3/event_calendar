@@ -87,8 +87,9 @@ class EventCalendarController extends ControllerBase {
     $eventDates = [];
     $plugin_block = $this->blockManager->createInstance('event_calendar_block');
     $block_config = $plugin_block->getConfiguration();
+    $event_node_type = !empty($block_config['event_node_type']) ? $block_config['event_node_type'] : '';
     $config = $this->configFactory->get('event_calendar.settings');
-    $event_flag = $config->get('event_flag_' . $block_config['event_node_type']);
+    $event_flag = $config->get('event_flag_' . $event_node_type);
 
     if ($event_flag) {
       // イベントデータを取得.
@@ -96,7 +97,7 @@ class EventCalendarController extends ControllerBase {
       $query->fields('ec', ['start_date', 'end_date', 'nid']);
       $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
       $query->fields('nfd', ['type']);
-      $query->condition('nfd.type', $block_config['event_node_type'], '=');
+      $query->condition('nfd.type', $event_node_type, '=');
       $query->condition('ec.start_date', $lastDayOfMonth, '<=');
       $query->condition('ec.end_date', $firstDayOfMonth, '>=');
       $results = $query->execute();
