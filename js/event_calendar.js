@@ -3,7 +3,7 @@
         attach: function (context, settings) {
             once('eventCalendar', '.event-calendar', context).forEach(function (calendar) {
                 const updateCalendar = (month, year) => {
-                    fetch(`/api-event/event-calendar/?month=${month}&year=${year}`)
+                    fetch(`${drupalSettings.path.baseUrl}api-event/event-calendar/?month=${month}&year=${year}&node_type=${drupalSettings.eventCalendar.event_node_type}`)
                         .then(response => response.json())
                         .then(data => {
                             const calendarTbody = calendar.querySelector('.event-calendar__table tbody');
@@ -21,8 +21,10 @@
                                     day.has_event ? 'event-calendar__has-event' : '',
                                 ];
                                 
-
-                                html += `<td class="${classes.join(' ').trim()}">${day.day || ''}</td>`;
+                                const link = `${drupalSettings.path.baseUrl}event-calendar/${drupalSettings.eventCalendar.event_node_type}/${year}/${month}/${day.day}`;
+                                html += `<td class="${classes.join(' ').trim()}">
+                                <a href="${day.has_event ? link : 'javascript:;' }">${day.day || ''}</a>
+                                </td>`;
                                 count++;
                             });
                             html += '</tr></tbody></table>';
@@ -49,4 +51,4 @@
             });
         },
     };
-})(Drupal, once);
+})(Drupal, drupalSettings);
