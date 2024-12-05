@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * @file
+ * Event_calendar install.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function event_calendar_schema() {
+  return [
+    'event_calendars' => [
+      'fields' => [
+        'id' => [
+          'type' => 'serial',
+          'not null' => TRUE,
+          'unsigned' => TRUE,
+        ],
+        'nid' => [
+          'type' => 'int',
+          'not null' => TRUE,
+          'unsigned' => TRUE,
+        ],
+        'start_date' => [
+          'mysql_type' => 'datetime',
+          'not null' => TRUE,
+        ],
+        'end_date' => [
+          'mysql_type' => 'datetime',
+          'not null' => TRUE,
+        ],
+      ],
+      'primary key' => ['id'],
+      'unique keys' => [
+        'unique_nid' => ['nid'],
+      ],
+    ],
+  ];
+}

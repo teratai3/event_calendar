@@ -1,0 +1,7 @@
+event_calendar.api_index:
+  path: '/api-event/event-calendar'
+  defaults:
+    _controller: '\Drupal\event_calendar\Controller\EventCalendarController::index'
+    _title: 'API Event Calendar'
+  requirements:
+    _permission: 'access content'

@@ -1,0 +1,137 @@
+<?php
+
+/**
+ * @file
+ * Event_calendar.
+ */
+
+use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_form_alter().
+ */
+function event_calendar_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if (preg_match('/^node_(.+)_form$/', $form_id)) {
+    $node = $form_state->getFormObject()->getEntity();
+    $bundle = $node->bundle();
+    $config = \Drupal::config('event_calendar.settings');
+    $event_flag = $config->get('event_flag_' . $bundle);
+    // 指定のコンテンツタイプでイベントカレンダーが1かつ、新規追加画面と編集画面時.
+    if ($event_flag == 1 && in_array($form_id, ['node_' . $bundle . '_form', 'node_' . $bundle . '_edit_form'])) {
+      $data = \Drupal::database()->select('event_calendars', 'ec')->fields('ec')->condition('nid', $node->id())->execute()->fetchAssoc();
+      $form['event_settings'] = [
+        '#type' => 'details',
+        '#title' => 'イベント日',
+        '#group' => 'advanced',
+        '#open' => FALSE,
+        '#weight' => 35,
+        '#attributes' => ['class' => ['event-form']],
+        '#optional' => FALSE,
+        '#description' => 'ここにイベントの開始日と終了日を設定してください。',
+      ];
+      $form['event_settings']['event_start_date'] = [
+        '#type' => 'datetime',
+        '#title' => 'イベント開始日',
+        '#required' => TRUE,
+        '#description' => 'イベントの開始日を選択してください。',
+        '#default_value' => isset($data['start_date']) ? DrupalDateTime::createFromTimestamp(strtotime($data['start_date'])) : NULL,
+      ];
+      $form['event_settings']['event_end_date'] = [
+        '#type' => 'datetime',
+        '#title' => 'イベント終了日',
+        '#required' => TRUE,
+        '#description' => 'イベントの終了日を選択してください。',
+        '#default_value' => isset($data['end_date']) ? DrupalDateTime::createFromTimestamp(strtotime($data['end_date'])) : NULL,
+      ];
+      $form['#validate'][] = '_event_calendar_node_form_validate';
+      $form['actions']['submit']['#submit'][] = '_event_calendar_node_form_submit';
+    }
+  }
+
+  if (in_array($form_id, ['node_type_add_form', 'node_type_edit_form'])) {
+    $node_type = $form_state->getFormObject()->getEntity()->id();
+    $event_flag = $config->get('event_flag_' . $node_type);
+    // コンテンツタイプのオプションページ.
+    $form['event_settings'] = [
+      '#type' => 'details',
+      '#title' => 'イベント日の設定',
+      '#group' => 'additional_settings',
+      '#weight' => 10,
+    ];
+    $form['event_settings']['event_flag'] = [
+      '#type' => 'checkbox',
+      '#title' => 'イベントカレンダーを有効にする',
+      '#description' => 'このオプションをオンにすると、イベントカレンダーが有効になります。',
+      '#default_value' => $event_flag,
+    ];
+    $form['actions']['submit']['#submit'][] = '_event_calendar_type_submit';
+  }
+
+}
+
+/**
+ * コンテンツタイプ Submit function validate.
+ */
+function _event_calendar_node_form_validate($form, FormStateInterface $form_state) {
+  // 開始日時と終了日時を取得.
+  $start_date = $form_state->getValue('event_start_date');
+  $end_date = $form_state->getValue('event_end_date');
+
+  if (!isset($start_date) || !isset($end_date)) {
+    $form_state->setErrorByName('event_start_date', '開始日と終了日は必須です。');
+  }
+
+  if (strtotime($end_date) <= strtotime($start_date)) {
+    $form_state->setErrorByName('event_end_date', '終了日時は開始日時より後である必要があります。');
+  }
+}
+
+/**
+ * コンテンツタイプ Submit function calendar.
+ */
+function _event_calendar_node_form_submit($form, FormStateInterface $form_state) {
+  $nid = $form_state->getFormObject()->getEntity()->id();
+  $start_date = $form_state->getValue('event_start_date');
+  $end_date = $form_state->getValue('event_end_date');
+  $fields = [
+    'nid' => $nid,
+    'start_date' => date('Y-m-d H:i:s', strtotime($start_date)),
+    'end_date' => date('Y-m-d H:i:s', strtotime($end_date)),
+  ];
+  $query = \Drupal::database()->merge('event_calendars')->key(['nid' => $nid])->fields($fields);
+  $query->execute();
+}
+
+/**
+ * 設定ページ Submit function.
+ */
+function _event_calendar_type_submit($form, FormStateInterface $form_state) {
+  $node_type = $form_state->getFormObject()->getEntity()->id();
+  $event_flag = $form_state->getValue('event_flag');
+  $config = \Drupal::configFactory()->getEditable('event_calendar.settings');
+
+  if (!empty($event_flag)) {
+    $config->set('event_flag_' . $node_type, 1)->save();
+  }
+  else {
+    $config->clear('event_flag_' . $node_type)->save();
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function event_calendar_theme() {
+  return [
+    'event_calendar_block' => [
+      'variables' => [
+        'calendar_days' => [],
+        'month' => '',
+        'day' => '',
+        'year' => '',
+      ],
+      'template' => 'event-calendar-block',
+    ],
+  ];
+}
