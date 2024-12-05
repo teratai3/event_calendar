@@ -167,6 +167,12 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       ];
     }
 
+    $libraries = ['event_calendar/event_calendar_js'];
+
+    if (!empty($setting_config->get('enabled'))) {
+      $libraries[] = 'event_calendar/event_calendar_css';
+    }
+
     return [
       '#theme' => 'event_calendar_block',
       '#calendar_days' => $calendarDays,
@@ -174,10 +180,7 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       '#day' => $now->format('j'),
       '#year' => $now->format('Y'),
       '#attached' => [
-        'library' => [
-          'event_calendar/event_calendar_css',
-          'event_calendar/event_calendar_js',
-        ],
+        'library' => $libraries,
       ],
     ];
   }
