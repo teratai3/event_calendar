@@ -139,6 +139,7 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       $query->fields('ec', ['start_date', 'end_date', 'nid']);
       $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
       $query->fields('nfd', ['type']);
+      $query->condition('nfd.status', 1, '=');
       $query->condition('nfd.type', $config['event_node_type'], '=');
       $query->condition('ec.start_date', $lastDayOfMonth, '<=');
       $query->condition('ec.end_date', $firstDayOfMonth, '>=');
@@ -160,7 +161,6 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
 
     // 現在月の日付を追加.
     for ($day = 1; $day <= $totalDays; $day++) {
-      // $calendarDays[] = $day;
       $calendarDays[] = [
         'day' => $day,
         'has_event' => !empty($eventDates[$day]),
@@ -176,11 +176,17 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
     return [
       '#theme' => 'event_calendar_block',
       '#calendar_days' => $calendarDays,
+      '#event_node_type' => $config['event_node_type'],
       '#month' => $now->format('m'),
       '#day' => $now->format('j'),
       '#year' => $now->format('Y'),
       '#attached' => [
         'library' => $libraries,
+        'drupalSettings' => [
+          'eventCalendar' => [
+            'event_node_type' => $config['event_node_type'],
+          ],
+        ],
       ],
     ];
   }

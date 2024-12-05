@@ -11,7 +11,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**
- * Controller for fetching calendar data.
+ * Controller for json calendar data.
  */
 class EventCalendarController extends ControllerBase {
 
@@ -60,6 +60,7 @@ class EventCalendarController extends ControllerBase {
     // Get the query parameters (year and month).
     $month = \Drupal::request()->query->get('month');
     $year = \Drupal::request()->query->get('year');
+    $node_type = \Drupal::request()->query->get('node_type');
 
     $now = new DrupalDateTime('now');
     if (!$month || !$year) {
@@ -85,11 +86,11 @@ class EventCalendarController extends ControllerBase {
     }
 
     $eventDates = [];
-    $plugin_block = $this->blockManager->createInstance('event_calendar_block');
-    $block_config = $plugin_block->getConfiguration();
-    $event_node_type = !empty($block_config['event_node_type']) ? $block_config['event_node_type'] : '';
+    // $plugin_block = $this->blockManager->createInstance('event_calendar_block');
+    // $block_config = $plugin_block->getConfiguration();
+    // $event_node_type = !empty($block_config['event_node_type']) ? $block_config['event_node_type'] : '';
     $config = $this->configFactory->get('event_calendar.settings');
-    $event_flag = $config->get('event_flag_' . $event_node_type);
+    $event_flag = $config->get('event_flag_' . $node_type);
 
     if ($event_flag) {
       // イベントデータを取得.
@@ -97,7 +98,8 @@ class EventCalendarController extends ControllerBase {
       $query->fields('ec', ['start_date', 'end_date', 'nid']);
       $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
       $query->fields('nfd', ['type']);
-      $query->condition('nfd.type', $event_node_type, '=');
+      $query->condition('nfd.status', 1, '=');
+      $query->condition('nfd.type', $node_type, '=');
       $query->condition('ec.start_date', $lastDayOfMonth, '<=');
       $query->condition('ec.end_date', $firstDayOfMonth, '>=');
       $results = $query->execute();
