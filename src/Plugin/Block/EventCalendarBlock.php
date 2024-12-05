@@ -182,11 +182,12 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       '#year' => $now->format('Y'),
       '#attached' => [
         'library' => $libraries,
-        'drupalSettings' => [
+        // 複数ブロックがある場合、キーが上書きされるため
+        /*'drupalSettings' => [
           'eventCalendar' => [
             'event_node_type' => $config['event_node_type'],
           ],
-        ],
+        ],*/
       ],
     ];
   }

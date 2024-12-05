@@ -120,6 +120,32 @@ function _event_calendar_type_submit($form, FormStateInterface $form_state) {
 }
 
 /**
+ * Implements hook_preprocess_HOOK().
+ */
+function event_calendar_preprocess_node(array &$variables) {
+  $node = $variables['node'];
+  $config = \Drupal::configFactory()->getEditable('event_calendar.settings');
+  $event_flag = $config->get('event_flag_' . $node->bundle());
+
+  if ($event_flag) {
+    $data = \Drupal::database()->select('event_calendars', 'ec')->fields('ec')->condition('nid', $node->id())->execute()->fetchAssoc();
+    if (isset($data['start_date']) && isset($data['end_date'])) {
+      $variables['event_start_date'] = $data['start_date'] ?? NULL;
+      $variables['event_end_date'] = $data['end_date'] ?? NULL;
+      $variables['content']['event_calendar'] = [
+        '#type' => 'container',
+        'start_date' => [
+          '#markup' => '<p><strong>イベント開始日:</strong> ' . date('Y年m月d日 H:i', strtotime($data['start_date'])) . '</p>',
+        ],
+        'end_date' => [
+          '#markup' => '<p><strong>イベント終了日:</strong> ' . date('Y年m月d日 H:i', strtotime($data['end_date'])) . '</p>',
+        ],
+      ];
+    }
+  }
+}
+
+/**
  * Implements hook_theme().
  */
 function event_calendar_theme() {
