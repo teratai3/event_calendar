@@ -2,12 +2,18 @@
     width: 100%;
     text-align: center;
 }
-.event-calendar th,
-.event-calendar td{
+.event-calendar th{
     padding: 10px 5px;
 }
 .event-calendar th{
     font-weight: bold;
+}
+.event-calendar td a{
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    outline: none;
+    padding: 10px 5px;
 }
 
 /* ヘッダー */
@@ -44,6 +50,9 @@
 .event-calendar .event-calendar__has-event{
     position: relative;
 }
+.event-calendar td:not(.event-calendar__has-event) a{
+    pointer-events: none;
+}
 .event-calendar .event-calendar__has-event::before{
     content: "";
     display: block;
@@ -59,4 +68,41 @@
 
 .event-calendar .event-calendar__current.event-calendar__has-event::before{
     background: #fff;
+}
+
+
+
+/* ページの作成 */
+.event-list{
+    list-style: none;
+    margin: 0;
+    border-top: 1px solid #ccc;
+}
+.event-list .event-list__item{
+    border-bottom: 1px solid #ccc;
+}
+.event-list .event-list__item > a{
+    padding: 20px 15px;
+    text-decoration: none;
+    display: block;
+    outline: 0;
+    color: #333;
+    transition: opacity 0.4s ease-in-out;
+}
+.event-list .event-list__item > a:hover{
+    opacity: 0.6;
+}
+.event-list .event-list__date,
+.event-list .event-list__title{
+    margin: 0;
+}
+.event-list .event-list__date{
+    margin-bottom: 5px;
+}
+
+.event-list .event-list__description{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
 }
