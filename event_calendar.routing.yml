@@ -5,6 +5,17 @@ event_calendar.config:
     _title: 'イベントカレンダー設定'
   requirements:
     _permission: 'administer site configuration'
+event_calendar.index:
+  path: '/event-calendar/{node_type}/{year}/{month}/{day}'
+  defaults:
+    _controller: '\Drupal\event_calendar\Controller\EventCalendarController::index'
+    _title: 'Event Calendar'
+  requirements:
+    node_type: '[a-z0-9_]+' # 英小文字、数字、アンダースコアを許可
+    year: '\d{4}'   # 年は4桁の数字
+    month: '\d{1,2}' # 月は1〜2桁の数字
+    day: '\d{1,2}'   # 日は1〜2桁の数字
+    _permission: 'access content'
 event_calendar.api_index:
   path: '/api-event/event-calendar'
   defaults:
