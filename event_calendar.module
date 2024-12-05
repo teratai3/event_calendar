@@ -118,3 +118,20 @@ function _event_calendar_type_submit($form, FormStateInterface $form_state) {
     $config->clear('event_flag_' . $node_type)->save();
   }
 }
+
+/**
+ * Implements hook_theme().
+ */
+function event_calendar_theme() {
+  return [
+    'event_calendar_block' => [
+      'variables' => [
+        'calendar_days' => [],
+        'month' => '',
+        'day' => '',
+        'year' => '',
+      ],
+      'template' => 'event-calendar-block',
+    ],
+  ];
+}
