@@ -1,9 +1,10 @@
 (function (Drupal, drupalSettings) {
     Drupal.behaviors.eventCalendar = {
         attach: function (context, settings) {
-            once('eventCalendar', '.event-calendar', context).forEach(function (calendar) {
+            once('eventCalendar', '.event-calendar', context).forEach(calendar => {
+                const eventNodeType = calendar.dataset.node_type;
                 const updateCalendar = (month, year) => {
-                    fetch(`${drupalSettings.path.baseUrl}api-event/event-calendar/?month=${month}&year=${year}&node_type=${drupalSettings.eventCalendar.event_node_type}`)
+                    fetch(`${drupalSettings.path.baseUrl}api-event/event-calendar/?month=${month}&year=${year}&node_type=${eventNodeType}`)
                         .then(response => response.json())
                         .then(data => {
                             const calendarTbody = calendar.querySelector('.event-calendar__table tbody');
@@ -21,9 +22,9 @@
                                     day.has_event ? 'event-calendar__has-event' : '',
                                 ];
                                 
-                                const link = `${drupalSettings.path.baseUrl}event-calendar/${drupalSettings.eventCalendar.event_node_type}/${year}/${month}/${day.day}`;
+                                const link = `${drupalSettings.path.baseUrl}event-calendar/${eventNodeType}/${year}/${month}/${day.day}`;
                                 html += `<td class="${classes.join(' ').trim()}">
-                                <a href="${day.has_event ? link : 'javascript:;' }">${day.day || ''}</a>
+                                <a href="${day.has_event ? Drupal.checkPlain(link) : 'javascript:;' }">${day.day ? Drupal.checkPlain(day.day) : ''}</a>
                                 </td>`;
                                 count++;
                             });
@@ -31,7 +32,7 @@
                             calendarTbody.innerHTML = html;
                             calendar.querySelector('.event-calendar__title').textContent = `${data.year}年 ${data.month}月`;
                         });
-                };
+                };   
 
                 calendar.querySelector('.event-calendar__button--prev').addEventListener('click', () => {
                     const month = parseInt(calendar.dataset.month) - 1 || 12;
