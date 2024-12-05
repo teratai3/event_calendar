@@ -1,0 +1,7 @@
+event_calendar_js:
+  version: 1.x
+  js:
+    js/event_calendar.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
