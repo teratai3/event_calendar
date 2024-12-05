@@ -1,7 +1,9 @@
 <?php
 
-namespace Drupal\event_calendar\Controller;
+namespace Drupal\event_calendar\Controller\Api;
 
+use Drupal\Core\Block\BlockManagerInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Datetime\DrupalDateTime;
@@ -20,8 +22,24 @@ class EventCalendarController extends ControllerBase {
    */
   protected $database;
 
-  public function __construct(Connection $database) {
+  /**
+   * The Block Manager Service.
+   *
+   * @var \Drupal\Core\Block\BlockManagerInterface
+   */
+  protected $blockManager;
+
+  /**
+   * The configuration factory service.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  public function __construct(Connection $database, BlockManagerInterface $block_manager, ConfigFactoryInterface $config_factory) {
     $this->database = $database;
+    $this->blockManager = $block_manager;
+    $this->configFactory = $config_factory;
   }
 
   /**
@@ -29,8 +47,9 @@ class EventCalendarController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-    // データベース接続をサービスコンテナから取得.
-      $container->get('database')
+      $container->get('database'),
+      $container->get('plugin.manager.block'),
+      $container->get('config.factory')
     );
   }
 
@@ -65,15 +84,24 @@ class EventCalendarController extends ControllerBase {
       ];
     }
 
-    // イベントデータを取得.
-    $query = $this->database->select('event_calendars', 'ec')
-      ->fields('ec')
-      ->condition('start_date', $lastDayOfMonth->format('Y-m-d'), '<=')
-      ->condition('end_date', $firstDayOfMonth->format('Y-m-d'), '>=')
-      ->execute();
+    $eventDates = [];
+    $plugin_block = $this->blockManager->createInstance('event_calendar_block');
+    $block_config = $plugin_block->getConfiguration();
+    $config = $this->configFactory->get('event_calendar.settings');
+    $event_flag = $config->get('event_flag_' . $block_config['event_node_type']);
 
-    if (!empty($query)) {
-      foreach ($query as $record) {
+    if ($event_flag) {
+      // イベントデータを取得.
+      $query = $this->database->select('event_calendars', 'ec');
+      $query->fields('ec', ['start_date', 'end_date', 'nid']);
+      $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
+      $query->fields('nfd', ['type']);
+      $query->condition('nfd.type', $block_config['event_node_type'], '=');
+      $query->condition('ec.start_date', $lastDayOfMonth, '<=');
+      $query->condition('ec.end_date', $firstDayOfMonth, '>=');
+      $results = $query->execute();
+
+      foreach ($results as $record) {
         $eventStart = new DrupalDateTime($record->start_date);
         $eventEnd = new DrupalDateTime($record->end_date);
 
