@@ -175,6 +175,7 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       '#year' => $now->format('Y'),
       '#attached' => [
         'library' => [
+          'event_calendar/event_calendar_css',
           'event_calendar/event_calendar_js',
         ],
       ],
