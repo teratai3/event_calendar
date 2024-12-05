@@ -3,3 +3,4 @@ type: module
 description: "イベントカレンダー追加"
 package: Custom
 core_version_requirement: ^10
+configure: event_calendar.config

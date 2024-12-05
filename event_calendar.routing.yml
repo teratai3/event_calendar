@@ -1,3 +1,10 @@
+event_calendar.config:
+  path: '/admin/config/system/event-calendar'
+  defaults:
+    _form: '\Drupal\event_calendar\Form\EventCalendarConfigForm'
+    _title: 'イベントカレンダー設定'
+  requirements:
+    _permission: 'administer site configuration'
 event_calendar.api_index:
   path: '/api-event/event-calendar'
   defaults:
