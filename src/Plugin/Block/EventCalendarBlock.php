@@ -3,6 +3,7 @@
 namespace Drupal\event_calendar\Plugin\Block;
 
 use Drupal\Core\Block\BlockBase;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -34,10 +35,18 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
    */
   protected $entityTypeManager;
 
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager) {
+  /**
+   * The configuration factory service.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->database = $database;
     $this->entityTypeManager = $entity_type_manager;
+    $this->configFactory = $config_factory;
   }
 
   /**
@@ -49,7 +58,8 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       $plugin_id,
       $plugin_definition,
       $container->get('database'),
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('config.factory')
     );
   }
 
@@ -61,7 +71,13 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
     $options = [];
 
     foreach ($node_types as $type_id => $type) {
-      $options[$type_id] = $type->label();
+      $setting_config = $this->configFactory->get('event_calendar.settings');
+      $event_flag = $setting_config->get('event_flag_' . $type_id);
+      // イベントの設定がonになっているものだけ表示.
+      if ($event_flag) {
+        $options[$type_id] = $type->label();
+      }
+
     }
 
     $config = $this->getConfiguration();
@@ -111,29 +127,34 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       ];
     }
 
-    // イベントデータを取得.
-    $query = $this->database->select('event_calendars', 'ec');
-    $query->fields('ec', ['start_date', 'end_date', 'nid']);
-    $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
-    $query->fields('nfd', ['type']);
-    $query->condition('nfd.type', 'article', '=');
-    $query->condition('ec.start_date', $lastDayOfMonth, '<=');
-    $query->condition('ec.end_date', $firstDayOfMonth, '>=');
-    $results = $query->execute();
-
+    $config = $this->getConfiguration();
+    $setting_config = $this->configFactory->get('event_calendar.settings');
+    $event_flag = $setting_config->get('event_flag_' . $config['event_node_type']);
     // イベント期間をマッピング.
     $eventDates = [];
 
-    foreach ($results as $record) {
-      $eventStart = new DrupalDateTime($record->start_date);
-      $eventEnd = new DrupalDateTime($record->end_date);
+    if ($event_flag) {
+      // イベントデータを取得.
+      $query = $this->database->select('event_calendars', 'ec');
+      $query->fields('ec', ['start_date', 'end_date', 'nid']);
+      $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
+      $query->fields('nfd', ['type']);
+      $query->condition('nfd.type', $config['event_node_type'], '=');
+      $query->condition('ec.start_date', $lastDayOfMonth, '<=');
+      $query->condition('ec.end_date', $firstDayOfMonth, '>=');
+      $results = $query->execute();
 
-      // イベント期間内の日付をすべて取得.
-      $current = clone $eventStart;
-      while ($current <= $eventEnd) {
-        $day = $current->format('j');
-        $eventDates[$day] = TRUE;
-        $current->modify('+1 day');
+      foreach ($results as $record) {
+        $eventStart = new DrupalDateTime($record->start_date);
+        $eventEnd = new DrupalDateTime($record->end_date);
+
+        // イベント期間内の日付をすべて取得.
+        $current = clone $eventStart;
+        while ($current <= $eventEnd) {
+          $day = $current->format('j');
+          $eventDates[$day] = TRUE;
+          $current->modify('+1 day');
+        }
       }
     }
 
