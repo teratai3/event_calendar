@@ -1,0 +1,13 @@
+<ul class="event-list">
+    {% for event in events %}
+      <li class="event-list__item">
+        <a href="{{ event.link }}">
+          <p class="event-list__date">
+            <time>{{ event.start_date|date('Y年m月d日') }}〜{{ event.end_date|date('Y年m月d日') }}</time>
+          </p>
+          <h3 class="event-list__title">{{ event.title }}</h3>
+          <p class="event-list__description">{{ event.body|striptags }}</p>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>

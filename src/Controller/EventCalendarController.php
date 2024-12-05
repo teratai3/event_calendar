@@ -2,11 +2,14 @@
 
 namespace Drupal\event_calendar\Controller;
 
+use Drupal\Core\Block\BlockManagerInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Controller for fetching calendar data.
@@ -20,8 +23,24 @@ class EventCalendarController extends ControllerBase {
    */
   protected $database;
 
-  public function __construct(Connection $database) {
+  /**
+   * The Block Manager Service.
+   *
+   * @var \Drupal\Core\Block\BlockManagerInterface
+   */
+  protected $blockManager;
+
+  /**
+   * The configuration factory service.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  public function __construct(Connection $database, BlockManagerInterface $block_manager, ConfigFactoryInterface $config_factory) {
     $this->database = $database;
+    $this->blockManager = $block_manager;
+    $this->configFactory = $config_factory;
   }
 
   /**
@@ -29,78 +48,68 @@ class EventCalendarController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-    // データベース接続をサービスコンテナから取得.
-      $container->get('database')
+      $container->get('database'),
+      $container->get('plugin.manager.block'),
+      $container->get('config.factory')
     );
   }
 
   /**
-   * 月のカレンダー取得.
+   * 日の記事データを一覧で表示.
    */
-  public function index() {
-    // Get the query parameters (year and month).
-    $month = \Drupal::request()->query->get('month');
-    $year = \Drupal::request()->query->get('year');
-
-    $now = new DrupalDateTime('now');
-    if (!$month || !$year) {
-      $month = $now->format('m');
-      $year = $now->format('Y');
+  public function index($node_type, $year, $month, $day) {
+    $config = $this->configFactory->get('event_calendar.settings');
+    $event_flag = $config->get('event_flag_' . $node_type);
+    // 年と月をバリデート.
+    if (!$event_flag || !checkdate($month, $day, $year)) {
+      throw new NotFoundHttpException();
     }
+    $selected_date = new DrupalDateTime("$year-$month-$day");
 
-    $firstDayOfMonth = new DrupalDateTime("$year-$month-01");
-    $lastDayOfMonth = new DrupalDateTime($firstDayOfMonth->format('Y-m-t'));
+    $query = $this->database->select('event_calendars', 'ec');
+    $query->fields('ec', ['start_date', 'end_date', 'nid']);
+    // node_field_data テーブルを結合.
+    $query->join('node_field_data', 'nfd', 'ec.nid = nfd.nid');
+    $query->fields('nfd', ['nid', 'title', 'created', 'type']);
 
-    // 現在の月のカレンダーを構築.
-    $calendarDays = [];
-    // 月の最初の曜日 (0=日曜日, 6=土曜日)
-    $startWeekday = (int) $firstDayOfMonth->format('w');
-    $totalDays = (int) $lastDayOfMonth->format('j');
+    // node__body テーブルを結合.
+    $query->leftJoin('node__body', 'nb', 'ec.nid = nb.entity_id');
+    $query->fields('nb', ['body_value', 'body_format']);
 
-    // 空白の日付を挿入（前月のプレースホルダー）.
-    for ($i = 0; $i < $startWeekday; $i++) {
-      $calendarDays[] = [
-        'day' => NULL,
-        'has_event' => FALSE,
+    $query->condition('nfd.status', 1, '=');
+    $query->condition('nfd.type', $node_type, '=');
+    $query->condition('ec.start_date', $selected_date->format('Y-m-d') . ' 23:59:59', '<=');
+    $query->condition('ec.end_date', $selected_date->format('Y-m-d') . ' 00:00:00', '>=');
+    $query->orderBy('ec.start_date', 'ASC');
+    $query->orderBy('ec.end_date', 'ASC');
+    $results = $query->execute();
+    $events = [];
+    foreach ($results as $record) {
+      $events[] = [
+        'title' => $record->title,
+        'type' => $record->type,
+        'body' => $record->body_value,
+        'created' => date('Y-m-d', $record->created),
+        'start_date' => $record->start_date,
+        'end_date' => $record->end_date,
+        'link' => Url::fromRoute('entity.node.canonical', ['node' => $record->nid])->toString(),
       ];
     }
 
-    // イベントデータを取得.
-    $query = $this->database->select('event_calendars', 'ec')
-      ->fields('ec')
-      ->condition('start_date', $lastDayOfMonth->format('Y-m-d'), '<=')
-      ->condition('end_date', $firstDayOfMonth->format('Y-m-d'), '>=')
-      ->execute();
-
-    if (!empty($query)) {
-      foreach ($query as $record) {
-        $eventStart = new DrupalDateTime($record->start_date);
-        $eventEnd = new DrupalDateTime($record->end_date);
-
-        // イベント期間内の日付をすべて取得.
-        $current = clone $eventStart;
-        while ($current <= $eventEnd) {
-          $day = $current->format('j');
-          $eventDates[$day] = TRUE;
-          $current->modify('+1 day');
-        }
-      }
+    if (empty($events)) {
+      throw new NotFoundHttpException();
     }
 
-    // Add current month's days.
-    for ($day = 1; $day <= $totalDays; $day++) {
-      $calendarDays[] = [
-        'day' => $day,
-        'has_event' => !empty($eventDates[$day]),
-      ];
-    }
+    return [
+      '#theme' => 'event_calendar_page',
+      '#events' => $events,
+      '#title' => 'イベント ' . $selected_date->format('Y年m月d日'),
+      '#selected_date' => $selected_date->format('Y年m月d日'),
+      'pager' => [
+        '#type' => 'pager',
+      ],
+    ];
 
-    return new JsonResponse([
-      'calendar_days' => $calendarDays,
-      'month' => $month,
-      'year' => $year,
-      'current_date' => $now->format('Y-m-j'),
-    ]);
   }
 
 }

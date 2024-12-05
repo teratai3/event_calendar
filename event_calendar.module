@@ -127,11 +127,19 @@ function event_calendar_theme() {
     'event_calendar_block' => [
       'variables' => [
         'calendar_days' => [],
+        'event_node_type' => '',
         'month' => '',
         'day' => '',
         'year' => '',
       ],
       'template' => 'event-calendar-block',
+    ],
+    'event_calendar_page' => [
+      'variables' => [
+        'events' => [],
+        'selected_date' => '',
+      ],
+      'template' => 'event-calendar-page',
     ],
   ];
 }
