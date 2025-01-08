@@ -101,6 +101,10 @@ function _event_calendar_node_form_submit($form, FormStateInterface $form_state)
   ];
   $query = \Drupal::database()->merge('event_calendars')->key(['nid' => $nid])->fields($fields);
   $query->execute();
+
+  // カレンダーブロックのキャッシュを削除
+  \Drupal::service('cache_tags.invalidator')->invalidateTags(['block_view:event_calendar']);
+
 }
 
 /**

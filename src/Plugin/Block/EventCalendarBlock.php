@@ -180,9 +180,12 @@ class EventCalendarBlock extends BlockBase implements ContainerFactoryPluginInte
       '#month' => $now->format('m'),
       '#day' => $now->format('j'),
       '#year' => $now->format('Y'),
+      '#cache' => [
+        'tags' => ['block_view:event_calendar'],
+      ],
       '#attached' => [
         'library' => $libraries,
-        // 複数ブロックがある場合、キーが上書きされるため
+        // 複数ブロックがある場合、キーが上書きされるため.
         /*'drupalSettings' => [
           'eventCalendar' => [
             'event_node_type' => $config['event_node_type'],
